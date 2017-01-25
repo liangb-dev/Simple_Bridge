@@ -1,0 +1,8 @@
+xdd -g 1 pkt1.bin
+
+Read the .bin file into a buffer, and parse it from there
+
+struct.pack()
+struct.unpack()   something like a printf
+
+Encode/decode results just print to "stout"
