@@ -73,8 +73,8 @@ def decode():
     #Extracts corresponding digits from 'hexlist'
     ether_dst = ':'.join([str(x) for x in hexlist[:6]])
     ether_src = ':'.join([str(x) for x in hexlist[6:12]])
-    _type = '`'.join([str(x) for x in hexlist[12:13]])
-    flags = ''.join([str(x) for x in hexlist[13:14]])
+    _type = ''.join([str(x) for x in hexlist[18:20]])
+    flags = ''.join([str(x) for x in hexlist[20:22]])
     #14:21
     stp_root_pri = ''.join([str(x) for x in hexlist[22:24]])
     stp_root_mac = ':'.join([str(x) for x in hexlist[24:30]])
@@ -87,6 +87,9 @@ def decode():
 
     _type = '%02d' % int(_type)
     _type = str(_type)
+    flags = '%02d' % int(flags)
+    flags = str(flags)
+
 
     #Formats everything to match the text file format
     global output
@@ -145,14 +148,19 @@ def encode():
     #I used "%02d" to pad (two) leading zeros, but "%02d" only works on integers so I had to cast to int 
     stp_root_cost = "%02d" % int(stp_root_cost.replace(":","").replace("(","").replace(")","").replace("0x",""))
     stp_msg_age = "%04d" % int(stp_msg_age.replace(":","").replace("(","").replace(")","").replace("0x",""))    
+    _type = "%02d" % int(_type.replace("0x","").replace("(","").replace(")",""))
+    flags = "%02d" % int(flags.replace("0x","").replace("(","").replace(")",""))
+    _type = str(_type)
+    flags = str(flags)
+
     #Then I cast back to str so that I can concatenate later
     stp_root_cost = str(stp_root_cost) 
     stp_msg_age = str(stp_msg_age)
 
     #Concatenate all the variables into one long string
-    output = ether_dst + ether_src + _type + flags 
-    output += "264242030000000000" 
-    output += stp_root_pri + stp_root_mac + "000000" + stp_root_cost
+    output = ether_dst + ether_src + "0026" 
+    output += "424203000000" 
+    output += _type + flags + stp_root_pri + stp_root_mac + "000000" + stp_root_cost
     output += stp_bridge_pri + stp_bridge_mac + stp_port_id + stp_msg_age
     output += "140002000f0000000000000000000a"
     output = output.replace(":","").replace("(","").replace(")","").replace("0x","")
