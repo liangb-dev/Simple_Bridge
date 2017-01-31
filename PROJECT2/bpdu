@@ -162,12 +162,12 @@ def encode():
     output += "424203000000" 
     output += _type + flags + stp_root_pri + stp_root_mac + "000000" + stp_root_cost
     output += stp_bridge_pri + stp_bridge_mac + stp_port_id + stp_msg_age
-    output += "140002000f0000000000000000000a"
+    output += "140002000f000000000000000000"
     output = output.replace(":","").replace("(","").replace(")","").replace("0x","")
-    
-    print output
+
+    #print output
     #print len(output)
-    #print binascii.unhexlify(output)
+    print binascii.unhexlify(output)
 
 
 """
