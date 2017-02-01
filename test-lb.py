@@ -5,7 +5,7 @@
 
 import random, threading, subprocess
 import select, time, string
-import packet, struct, socket
+import struct, socket
 import signal, sys, getpass
 import argparse
 
@@ -105,6 +105,12 @@ def getaddrs(n):
             a1,a2 = a1+1,0
     return addrs
 
+# 'responder' function - drop spanning tree packets
+stp_bcast = '\x01\x80\xc2\x00\x00\x00'
+def no_bpdus(l, pkt):
+    if pkt[0:6] != stp_bcast:
+        l.received.append(pkt)
+
 #------------------------------------
 # now set everything up
 
@@ -124,9 +130,9 @@ passed = True
 w0 = connect(0, 'testhost-0')
 w1 = connect(1, 'testhost-1')
 w2 = connect(2, 'testhost-2')
-l0 = listener(w0)
-l1 = listener(w1)
-l2 = listener(w2)
+l0 = listener(w0, responder=no_bpdus)
+l1 = listener(w1, responder=no_bpdus)
+l2 = listener(w2, responder=no_bpdus)
 
 t = threading.Thread(target=listen_thread, args=())
 t.daemon = True
