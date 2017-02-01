@@ -32,22 +32,24 @@ parser = argparse.ArgumentParser(description='Wire - connect bridges')
 parser.add_argument('--fail', metavar='n', type=int, help='take down wire <n>')
 parser.add_argument('--fix', metavar='n', type=int, help='bring wire <n> back up')
 parser.add_argument('--verbose', action='store_true', help='print transmitted packets')
+parser.add_argument('--quiet', action='store_true', help='print nothing')
 parser.add_argument('nwires', metavar='N', type=int, nargs='?', default=10,
                     help='number of wires (default 10)')
 args = parser.parse_args()
 
 # and the main part
 #
-def print_pkt(n1, n2, pkt):
-    print '%s -> %s' % (n1, n2)
+def print_pkt(i, n1, n2, pkt):
+    s = ('wire %d, %s -> %s' % (i, n1, n2))
     bytes = map(lambda x: '%02x' % ord(x), buffer(pkt)[:])
     for i in range(0,len(bytes),16):
-        print '%04x' % i, string.join(bytes[i:i+16], ' ')
+        s += ('\n' + ('%04x' % i) + string.join(bytes[i:i+16], ' '))
+    print s
     
 # a single wire - accept connections on "wire.#", and forward packets between
 # connections. Runs as a separate thread.
 #
-def transfer(i):
+def _transfer(i):
     sockets = []
     names = dict()
     ls = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
@@ -63,11 +65,16 @@ def transfer(i):
                 s2,addr = r.accept()
                 names[s2] = addr
                 sockets.append(s2)
-                print 'connection from', addr
+                if not args.quiet:
+                    print 'connection from', addr
             else:
-                dgram = r.recv(1500)
+                try:
+                    dgram = r.recv(1500)
+                except:
+                    dgram = None
                 if not dgram:
-                    print 'closed', names[r]
+                    if not opt.quiet:
+                        print 'closed', names[r]
                     sockets.remove(r)
                     del names[r]
                     r.close()
@@ -75,7 +82,15 @@ def transfer(i):
                     for s in set(sockets) - set([r]):
                         s.send(dgram)
                         if args.verbose:
-                            print_pkt(names[r], names[s], dgram)
+                            print_pkt(i, names[r], names[s], dgram)
+                            print ''
+
+def transfer(i):
+    try:
+        _transfer(i)
+    except:
+        pass
+        
 
 def run_wires(nwires):
     global failed
@@ -95,7 +110,8 @@ def run_wires(nwires):
         dgram = s.recv(1024)
         if not dgram:
             break
-        print dgram
+        if not args.quiet:
+            print dgram
         i = int(dgram[4:])
         if dgram[0:4] == 'FAIL':
             failed[i] = True
@@ -122,4 +138,7 @@ if __name__ == '__main__':
         send_msg(args.fix, False)
     else:
         failed = [False] * args.nwires
-        run_wires(args.nwires)
+        try:
+            run_wires(args.nwires)
+        except:
+            pass
