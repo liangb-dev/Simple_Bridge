@@ -122,7 +122,7 @@ b_id = '01:01:01:01:01:01'
 w_args = ('./wires', '--verbose') if args.verbose else ('./wires', '--quiet') 
 w = subprocess.Popen(w_args, stdout=sys.stdout)
 time.sleep(1.0)
-s1 = subprocess.Popen(('./bridge', b_id, '0', '1', '2'), stdout=sys.stdout, stderr=open('/dev/null', 'w'))
+s1 = subprocess.Popen(('./bridge', b_id, '0', '1', '2'), stdout=sys.stdout, stderr=sys.stdout)
 time.sleep(1.0)
 
 passed = True

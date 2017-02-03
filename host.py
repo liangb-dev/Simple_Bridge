@@ -42,6 +42,7 @@ def receive(s):
         dst,src = struct.unpack('6s 6s', dgram[0:12])
         print 'received dgram from %s to %s:' % (ether_ntoa(src), ether_ntoa(dst))
         print string.join(map(lambda x: '%02x' % ord(x), buffer(dgram)[:]), ' ')
+        print ''
 
 if __name__ == '__main__':
     mymac = ether_aton(args.mymac[0])

@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/ether.h>
-#include <stdlib.h>
+#include <pthread.h>
+#include <arpa/inet.h>
 #include <argp.h>               /* horribly non-standard */
 
 static struct argp_option options[] = {
@@ -25,21 +27,19 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         silent = 1;
         break;
     case ARGP_KEY_ARG:
-        if (argnum++ == 0)
+        if (argnum == 0)
             ether_aton_r(arg, &l_ether);
-        else if (argnum++ == 1)
+        else if (argnum == 1)
             wirenum = atoi(arg);
-        else if (argnum++ == 2)
+        else if (argnum == 2)
             ether_aton_r(arg, &r_ether);
         else
             argp_usage(state);
+        argnum++;
         break;
     case ARGP_KEY_END:
         if (argnum != 3)
             argp_usage(state);
-        break;
-    default:
-        argp_usage(state);
         break;
     }
     return 0;

@@ -73,7 +73,7 @@ def _transfer(i):
                 except:
                     dgram = None
                 if not dgram:
-                    if not opt.quiet:
+                    if not args.quiet:
                         print 'closed', names[r]
                     sockets.remove(r)
                     del names[r]
