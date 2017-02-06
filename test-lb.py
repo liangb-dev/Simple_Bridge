@@ -72,26 +72,36 @@ def listen_thread():
         pass
 
 # test validation scaffolding
+
 def validate_list(rcvd, expected, msg):
-    i, val = 0, True
-    while i < min(len(rcvd),len(expected)):
-        r,e = rcvd[i], expected[i]
-        if r != e:
-            print msg, 'received:', hexdump(r[0:16])
-            print '                expected:', hexdump(e[0:16])
-            val = False
-        i += 1
-    if i < len(rcvd):
-        print msg, 'received extra messages:'
-        for m in rcvd[i:]:
-            print '  ', hexdump(m[0:16])
-        val = False
-    if i < len(expected):
-        print msg, 'missing messages:'
-        for m in expected[i:]:
-            print '  ', hexdump(m[0:16])
-        val = False
-    return val
+    if rcvd == expected:
+        return True
+    print ' ', msg, ':'
+    i,j = 0,0
+    while i < len(rcvd) and j < len(expected):
+        if rcvd[i] == expected[j]:
+            print 'OK:    ', hexdump(rcvd[i][0:16]), '...'
+            i += 1; j += 1
+        elif rcvd[i] in expected[j+1:]:
+            k = j+1+expected[j+1:].index(rcvd[i])
+            while j < k:
+                print 'MISSED:', hexdump(expected[j][0:16]), '...'
+                j += 1
+        elif expected[j] in rcvd[i+1:]:
+            k = i+1+rcvd[i+1:].index(expected[j])
+            while i < k:
+                print 'EXTRA: ', hexdump(rcvd[i][0:16]), '...'
+                i += 1
+        else:
+            print 'WRONG: ', hexdump(rcvd[i][0:16]), '...'
+            print '      [', hexdump(expected[j][0:16]), '... ]'
+            i += 1
+            j += 1
+    for r in rcvd[i:]:
+        print 'EXTRA: ', hexdump(r[0:16]), '...'
+    for e in expected[j:]:
+            print 'MISSED:', hexdump(e[0:16]), '...'
+    return False
 
 # generate some non-multicast MAC addresses
 a1,a2 = 1,1
@@ -116,14 +126,21 @@ def no_bpdus(l, pkt):
 
 parser = argparse.ArgumentParser(description='Test-lb - test learning bridge functionality')
 parser.add_argument('--verbose', action='store_true', help='verbose printing')
+parser.add_argument('--nowait', action='store_true', help='don\'t wait 30s for listening/learning states')
+parser.add_argument('--tests', metavar='n[,n,...]', nargs=1, help='tests to run')
+parser.add_argument('extra', nargs='*', help='[-- arg [arg...]] argument to bridge executable')
 args = parser.parse_args()
 
 b_id = '01:01:01:01:01:01'
 w_args = ('./wires', '--verbose') if args.verbose else ('./wires', '--quiet') 
 w = subprocess.Popen(w_args, stdout=sys.stdout)
 time.sleep(1.0)
-s1 = subprocess.Popen(('./bridge', b_id, '0', '1', '2'), stdout=sys.stdout, stderr=sys.stdout)
+s1 = subprocess.Popen(['./bridge'] + args.extra + [b_id, '0', '1', '2'], 
+                      stdout=sys.stdout, stderr=sys.stdout)
 time.sleep(1.0)
+if not args.nowait:
+    print 'waiting for listening/learning state to expire. Use --nowait to skip'
+    time.sleep(30)
 
 passed = True
 
@@ -268,25 +285,22 @@ def test4():
     
 #------------------------------------
 
-crashed = False
 failed = []
 passed = []
 
-try:
-    if True:
-        for t in (test1, test2, test3, test4):
-            if t():
-                passed.append(t.func_name)
-            else:
-                failed.append(t.func_name)
-                alldone = True
-except:
-    crashed = True
+if args.tests:
+    testlist = [globals()['test' + n] for n in args.tests[0].split(',')]
+else:
+    testlist = [test1, test2, test3, test4]
+
+for t in testlist:
+    if t():
+        passed.append(t.func_name)
+    else:
+        failed.append(t.func_name)
 
 print 'TESTS PASSED:', ' '.join(passed)
 print 'TESTS FAILED:', ' '.join(failed) if failed else '--none--'
-if crashed:
-    print 'Warning: failure during testing, not all tests completed'
 
 w.send_signal(signal.SIGINT)
 s1.send_signal(signal.SIGINT)
