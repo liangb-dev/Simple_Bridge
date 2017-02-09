@@ -59,6 +59,20 @@ returns: the string
 def ether_ntoa(n):
     return string.join(map(lambda x: "%02x" % x, struct.unpack('6B', n)), ':')
 
+"""
+Not sure what this does yet!!
+"""
+def receive(s):
+    while True:
+        dgram = s.recv(1500)
+        if not dgram:
+            print 'lost connection'
+            sys.exit(1)
+        dst,src = struct.unpack('6s 6s', dgram[0:12])
+        print 'received dgram from %s to %s:' % (ether_ntoa(src), ether_ntoa(dstP))
+        print string.join(map(lambda x: '%02x' % ord(x), buffer(dgram)[:]), ' ')
+        print ''
+
 
 """
 Main function
@@ -87,7 +101,7 @@ if __name__ == '__main__':
 
     pkt_data = string.join(map(chr, (0xDE,0xAD,0xBE,0xEF,0xAD,0xBE,0xEF)), '')
     bogus_ethertype = 0x900
-    pkt = struct.pack('!6s 6s H', remote, myID, bogus_ethertype) + pkt_data
+    pkt = struct.pack('!6s 6s H', myID, myID, bogus_ethertype) + pkt_data
     if len(pkt) < 60:
         pkt = pkt + '\0' * (60-len(pkt))
     
