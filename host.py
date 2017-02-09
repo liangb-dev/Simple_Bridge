@@ -13,7 +13,13 @@ import argparse
 import struct
 
 # usage: host <mac> <wire> <remote-mac>
+"""
+parser = argparse.ArgumentParser(description='Process args')
+ArgumentParser object will hold necessary info
+add info to ArgumentParser thru the add_argument() method. 
 
+
+"""
 parser = argparse.ArgumentParser(description='Host - send packets across the "network"')
 parser.add_argument('mymac', metavar='ll:ll:ll:ll:ll:ll', type=str, nargs=1,
                     help='local MAC address')
@@ -25,11 +31,21 @@ parser.add_argument('--silent', action='store_true', help='receive only, no tran
 args = parser.parse_args()
 
 def ether_aton(a):
-    a = a.replace('-', ':')
+    #replace: copy of 'a' with '-' replaced with ':'
+    a = a.replace('-', ':') 
+    #split: 'a' into list by ':'
+    #int(x,16): return x in hex
+    #map: implement int(x,16) on every element in a.split(':')
     b = map(lambda x: int(x,16), a.split(':'))
+    #struct.pack('B',x): format 'x' unsigned char
+    #map: do struct.pack('B',x) to every element in 'b'
+    #reduce: add all the elements in struct.pack('B',x) together
     return reduce(lambda x,y: x+y, map(lambda x: struct.pack('B', x), b))
 
 def ether_ntoa(n):
+    #struct.unpack('6B',n): 
+    #map: do "%02x" % x to every element in every struct.unpack('6B',n)
+    #string.join(): join elements thru ':'
     return string.join(map(lambda x: "%02x" % x, 
                            struct.unpack('6B', n)), ':')
 
