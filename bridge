@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+import sys
+import socket
+import time
+import threading
+import string
+import getpass
+import argparse
+import struct
+
+"""
+Program: Bridge 
+Arguments: bridge ID, arbitrary number of ports (int) (which also correspond to the
+wires to be used)
+Description: Receives and sends BPDU messages across wires. Keep a table record of
+             certain values from the received BPDU messages. 
+
+===================================================================================
+"""
+
+
+
+"""
+method: parseargs
+Creates an object that takes in a mac address of format 'll:ll:ll:ll:ll:ll'
+as well as an arbitrary number of ports numbers that also correspond to wire
+numbers
+"""
+def parseargs():
+    global args
+    #Create ArgumentParser object
+    parser = argparse.ArgumentParser(description='Bridge - recv/send BPDU')
+    #Add argument option for
+    parser.add_argument('ID', metavar = 'll:ll:ll:ll:ll:ll', type=str, nargs=1, help='Birgde ID')
+    #Add argument option for arbitrary number of ports (int)
+    parser.add_argument('ports', type=int, help='port/wire numbers', nargs="+")
+    #Assign values to variable 'args'
+    args = parser.parse_args()
+
+
+"""
+method: ether_aton
+'Replaces' all '-' for ':' in the argument, 
+then convert all hex to decimal integers representation, 
+then 'packs' each individual element and 'reduces' the array into a sum of elements
+returns: sum
+"""
+def ether_aton(a):
+    a = a.replace('-',':')
+    b = map(lambda x: int(x,16), a.split(':')) #all numbers from hex to decimal
+    return reduce(lambda x,y: x+y, map(lambda x: struct.pack('B', x), b))
+
+"""
+method: ether_ntoa
+'Unpacks' each individual element and converts to 2 decimal places, 
+then 'join' them into a string
+returns: the string
+"""
+def ether_ntoa(n):
+    return string.join(map(lambda x: "%02x" % x, struct.unpack('6B', n)), ':')
+
+
+"""
+Main function
+"""
+if __name__ == '__main__':
+    parseargs()
+    myID = ether_aton(args.ID[0])
+    ports = args.ports
+    wirenum = ports[0]
+
+    remote = ether_aton("11:11:11:11:11:11")
+
+    print "Bridge ID: ",myID
+    print "Ports: ", ports
+    print "Number of ports: ",len(ports)
+    
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+    s.bind('\0%s.host-%s (wire %d)' % (getpass.getuser(), ether_ntoa(myID), wirenum))    
+    if s.connect_ex('\0%s.wire.%d' % (getpass.getuser(), wirenum)):
+        print 'connection error'
+        sys.exit(1)
+    
+    t = threading.Thread(target=receive, args=[s])
+    t.daemon = True #so ^C works
+    t.start()
+
+    pkt_data = string.join(map(chr, (0xDE,0xAD,0xBE,0xEF,0xAD,0xBE,0xEF)), '')
+    bogus_ethertype = 0x900
+    pkt = struct.pack('!6s 6s H', remote, myID, bogus_ethertype) + pkt_data
+    if len(pkt) < 60:
+        pkt = pkt + '\0' * (60-len(pkt))
+    
+    while True:
+        time.sleep(3)
+        if not args.silent:
+             s.send(pkt)
+
+
+
+"""
+BPDU - BPDU + localport#
+    A<B iff a.priority < b.priority (a,b are roots)
+         or
+    A==B if  A!<B and B!<A
+
+"""

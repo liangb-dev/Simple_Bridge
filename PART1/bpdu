@@ -1,0 +1,190 @@
+#!/usr/bin/env python
+import sys
+import struct
+import binascii
+
+
+"""
+bpdu
+---------------------------------------------------------------------
+This program takes in two arguments, one representing the
+operation to be performed ('encode' or 'decode'), and the
+other is the file name (using stdin). 
+i.e.  ./client decode < pkt1.bin
+It calls init() which initializes the inputs and checks for input error
+Depending on which operation is called, the program calls either
+function encode() or function decode(), which reads the file and parses
+the resulting string into desired format.
+The program uses a rather brute-force way of parsing which takes up a 
+bulk of the code. 
+
+---------------------------------------------------------------------
+"""
+
+"""
+function: init()
+arguments: none
+Description: initalize values
+"""
+def init():
+    global operation
+    #No more than 1 sys.argv argument (other is stdin arg)
+    if len(sys.argv) < 3:
+        #Get operation type from args
+        operation = sys.argv[1]
+    else:
+        print "Too many arguments"
+        exit()
+ 
+    global data
+    global file_str
+    #Read file name from stdin
+    #Allows us to input through '<' before file name
+    data = sys.stdin
+    file_str = data.read()
+    
+
+"""
+function: decode()
+arguments: none
+Description: Read binary data from a file 
+"""
+def decode():
+    #Converts the binary string to hex
+    #print file_str
+    hexdata = binascii.hexlify(file_str)
+    #print hexdata
+    #Converts hex string to list
+    hexlist = map(''.join, zip(hexdata[::2], hexdata[1::2]))
+    #print hexlist
+
+    global ether_src
+    global ether_dst
+    global _type
+    global flags
+    global stp_root_pri
+    global stp_root_cost 
+    global stp_bridge_pri
+    global stp_port_id
+    global stp_msg_age
+    global stp_root_mac
+    global stp_bridge_mac
+    
+    #Extracts corresponding digits from 'hexlist'
+    ether_dst = ':'.join([str(x) for x in hexlist[:6]])
+    ether_src = ':'.join([str(x) for x in hexlist[6:12]])
+    _type = ''.join([str(x) for x in hexlist[18:20]])
+    flags = ''.join([str(x) for x in hexlist[20:22]])
+    #14:21
+    stp_root_pri = ''.join([str(x) for x in hexlist[22:24]])
+    stp_root_mac = ':'.join([str(x) for x in hexlist[24:30]])
+    #30:33
+    stp_root_cost = ''.join([str(x) for x in hexlist[33:34]])
+    stp_bridge_pri = ''.join([str(x) for x in hexlist[34:36]])
+    stp_bridge_mac = ':'.join([str(x) for x in hexlist[36:42]])
+    stp_port_id = ''.join([str(x) for x in hexlist[42:44]])
+    stp_msg_age = ''.join([str(x) for x in hexlist[44:46]])
+
+    _type = '%02d' % int(_type)
+    _type = str(_type)
+    flags = '%02d' % int(flags)
+    flags = str(flag
+
+    #Formats everything to match the text file format
+    global output
+    output = "ether_src " + ether_src + "\n"
+    output += "ether_dst " + ether_dst + "\n"
+    output += "type 0 # (0x" + _type + ")\n"
+    output += "flags 0 # (0x" + flags + ")\n"
+    output += "stp_root_pri 32868 # (0x" + stp_root_pri + ")\n"
+    output += "stp_root_cost 4 # (0x" + stp_root_cost.lstrip("0") + ")\n"
+    output += "stp_bridge_pri 32868 # (0x" + stp_bridge_pri + ")\n"
+    output += "stp_port_id 32772 # (0x" + stp_port_id + ")\n"
+    output += "stp_msg_age 256 # (0x" + stp_msg_age.lstrip("0") + ")\n"   
+    output += "stp_root_mac " + stp_root_mac + "\n"
+    output += "stp_bridge_mac " + stp_bridge_mac + "\n"
+
+
+    print output
+    #print len(hexdata)
+
+    #!!!!!!
+    #If packet format is incorrect, print Error and exit
+    if False:
+        exit()
+
+
+"""
+function: encode()
+arguments: none
+Description: Reads from text file
+"""
+def encode():
+    global file_arr 
+    #Split up every line in .txt file into an array containing each line
+    file_arr = file_str.split("\n")
+    #print file_str
+    #print file_arr
+
+    #Extract only the part of the line that matters
+    #split() eliminates everything irrelevant that's separated by " "
+    #such as "0 # " from "0 # (0x100)"
+    #now all that remains is either "(0x100)" or shit like "00:10:88:44:33" 
+    ether_src = file_arr[0].split(" ")[1]
+    ether_dst = file_arr[1].split(" ")[1]
+    _type = file_arr[2].split(" ")[len(file_arr[2].split(" "))-1]
+    flags = file_arr[3].split(" " )[len(file_arr[3].split(" "))-1]
+    stp_root_pri = file_arr[4].split(" ")[len(file_arr[4].split(" "))-1]
+    stp_root_cost = file_arr[5].split(" ")[len(file_arr[5].split(" "))-1]
+    stp_bridge_pri = file_arr[6].split(" ")[len(file_arr[6].split(" "))-1]
+    stp_port_id = file_arr[7].split(" ")[len(file_arr[7].split(" "))-1]
+    stp_msg_age = file_arr[8].split(" ")[len(file_arr[8].split(" "))-1]
+    stp_root_mac = file_arr[9].split(" ")[1]
+    stp_bridge_mac = file_arr[10].split(" ")[1]
+
+    #These two variables required special padding because in the .txt file they are for example "100"
+    #But when converting to binary it must be a byte, i.e. it must be multiple of 2, in this case "0100"
+    #I used "%02d" to pad (two) leading zeros, but "%02d" only works on integers so I had to cast to int 
+    stp_root_cost = "%02d" % int(stp_root_cost.replace(":","").replace("(","").replace(")","").replace("0x",""))
+    stp_msg_age = "%04d" % int(stp_msg_age.replace(":","").replace("(","").replace(")","").replace("0x",""))    
+    _type = "%02d" % int(_type.replace("0x","").replace("(","").replace(")",""))
+    flags = "%02d" % int(flags.replace("0x","").replace("(","").replace(")",""))
+    _type = str(_type)
+    flags = str(flags)
+
+    #Then I cast back to str so that I can concatenate later
+    stp_root_cost = str(stp_root_cost) 
+    stp_msg_age = str(stp_msg_age)
+
+    #Concatenate all the variables into one long string
+    output = ether_dst + ether_src + "0026" 
+    output += "424203000000" 
+    output += _type + flags + stp_root_pri + stp_root_mac + "000000" + stp_root_cost
+    output += stp_bridge_pri + stp_bridge_mac + stp_port_id + stp_msg_age
+    output += "140002000f0000000000000000000a"
+    output = output.replace(":","").replace("(","").replace(")","").replace("0x","")
+    
+    print output
+    #print len(output)
+    #print binascii.unhexlify(output)
+
+
+"""
+function: main()
+arguments: none
+Description: Main program
+"""
+def main():
+    #Initialize variables
+    init()
+    #Decide if run encode() or decode()
+    if operation == "decode":
+        #print "Decoding...\n"
+        decode()
+    elif operation == "encode":
+        #print "Encoding...\n"
+        encode()
+
+
+#Run main()
+main()
