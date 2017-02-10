@@ -51,8 +51,9 @@ def hexdump(pkt):
 
 # listen on all sockets
 def _listen_thread():
+    global listeners
     while True:
-        rfds,ign1,ign2 = select.select([x.sock for x in listeners], [], [])
+        rfds,ign1,ign2 = select.select([x.sock for x in listeners], [], [], 0.1)
         for s in rfds:
             dgram = s.recv(1500)
             l = find_listener(s)
@@ -152,7 +153,7 @@ def test1():
 
     l0,l1,l2 = listener(w0,no_bpdus), listener(w1,no_bpdus), listener(w2,no_bpdus)
 
-    b = start_bridge('01:01:01:01:01:01')
+    bridge_pid = start_bridge('01:01:01:01:01:01')
 
     time.sleep(10)
     print ' .. sending frames in listening state'
@@ -200,7 +201,7 @@ def test1():
     val = val and validate_list(l1.pkts(), [z+f+payload], 'test 1.5 port 1')
     val = val and validate_list(l2.pkts(), [x+d+payload], 'test 1.5 port 2')
 
-    stop_bridge(b)
+    stop_bridge(bridge_pid)
     l0.done(); l1.done(); l2.done()
 
     print 'TEST 1:', 'passed' if val else 'FAILED'
@@ -348,7 +349,7 @@ passed = []
 if args.tests:
     testlist = [globals()['test' + n] for n in args.tests[0].split(',')]
 else:
-    testlist = [test1]
+    testlist = [test1,test2,test3]
 #try:
 if True:
     for t in testlist:
