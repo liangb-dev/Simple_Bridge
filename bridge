@@ -12,6 +12,7 @@ import struct
 Program: Bridge 
 Arguments: bridge ID, arbitrary number of ports (int) (which also correspond to the
 wires to be used)
+usage: bridge <mac> <port1> <port2> ...
 Description: Receives and sends BPDU messages across wires. Keep a table record of
              certain values from the received BPDU messages. 
 
@@ -33,7 +34,9 @@ def parseargs():
     #Add argument option for
     parser.add_argument('ID', metavar = 'll:ll:ll:ll:ll:ll', type=str, nargs=1, help='Birgde ID')
     #Add argument option for arbitrary number of ports (int)
-    parser.add_argument('ports', type=int, help='port/wire numbers', nargs="+")
+    parser.add_argument('ports', metavar='W', type=int, help='port/wire numbers', nargs="+")
+    #Add argument option for '--silent'
+    parser.add_argument('--silent', action='store_true',help='receive only, no transmit')
     #Assign values to variable 'args'
     args = parser.parse_args()
 
@@ -69,7 +72,7 @@ def receive(s):
             print 'lost connection'
             sys.exit(1)
         dst,src = struct.unpack('6s 6s', dgram[0:12])
-        print 'received dgram from %s to %s:' % (ether_ntoa(src), ether_ntoa(dstP))
+        print 'received dgram from %s to %s:' % (ether_ntoa(src), ether_ntoa(dst))
         print string.join(map(lambda x: '%02x' % ord(x), buffer(dgram)[:]), ' ')
         print ''
 
@@ -96,12 +99,12 @@ if __name__ == '__main__':
         sys.exit(1)
     
     t = threading.Thread(target=receive, args=[s])
-    t.daemon = True #so ^C works
+    t.daemon = True     #so ^C works
     t.start()
 
     pkt_data = string.join(map(chr, (0xDE,0xAD,0xBE,0xEF,0xAD,0xBE,0xEF)), '')
     bogus_ethertype = 0x900
-    pkt = struct.pack('!6s 6s H', myID, myID, bogus_ethertype) + pkt_data
+    pkt = struct.pack('!6s 6s H', remote, myID, bogus_ethertype) + pkt_data
     if len(pkt) < 60:
         pkt = pkt + '\0' * (60-len(pkt))
     

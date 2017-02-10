@@ -25,8 +25,8 @@ parser.add_argument('mymac', metavar='ll:ll:ll:ll:ll:ll', type=str, nargs=1,
                     help='local MAC address')
 parser.add_argument('wire', metavar='W', type=int, nargs=1,
                     help='wire # to connect to')
-parser.add_argument('remote', metavar='rr:rr:rr:rr:rr:rr', type=str, nargs=1,
-                    help='destination MAC address')
+#parser.add_argument('remote', metavar='rr:rr:rr:rr:rr:rr', type=str, nargs=1,
+#                    help='destination MAC address')
 parser.add_argument('--silent', action='store_true', help='receive only, no transmit')
 args = parser.parse_args()
 
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     pkt_data = string.join(map(chr, (0xDE,0xAD,0xBE,0xEF,0xDE,0xAD,0xBE,0xEF)), '')
     bogus_ethertype = 0x900
-    pkt = struct.pack('!6s 6s H', remote, mymac, bogus_ethertype) + pkt_data
+    pkt = struct.pack('!6s 6s H', mymac, mymac, bogus_ethertype) + pkt_data
     if len(pkt) < 60:
         pkt = pkt + '\0' * (60-len(pkt))
         
