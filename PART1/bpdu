@@ -88,7 +88,7 @@ def decode():
     _type = '%02d' % int(_type)
     _type = str(_type)
     flags = '%02d' % int(flags)
-    flags = str(flag
+    flags = str(flags)
 
     #Formats everything to match the text file format
     global output

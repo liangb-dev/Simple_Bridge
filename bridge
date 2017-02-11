@@ -76,6 +76,53 @@ def receive(s):
         print string.join(map(lambda x: '%02x' % ord(x), buffer(dgram)[:]), ' ')
         print ''
 
+"""
+vector V[p] = <R,c,T,p,age> where:
+R = root port identifier from last received BPDU
+c = root cost (hops weighted by link speed) from last BPDU
+T = the switch that sent the last received BPDU
+p = port ID on sending switch
+age = age of message
+"""
+class vector():
+    R = None
+    c = 0
+    T = None
+    p = 0
+    age = 0
+    def __init__(self, port):
+        self.R = port;
+        self.c = 0;
+        self.T = port;
+        self.p = 0;
+        self.age = 0;
+
+    def __init__(self, R=None, c=0, T=None, p=0, age=0):
+        self.R = R
+        self.c = c
+        self.T = T
+        self.p = p
+        self.age = age
+
+
+class Port():
+    portNo = None
+    logicalState = None
+    fwdingState = None
+    V = None
+
+    def __init__(self, portNo):
+        self.portNo = portNo
+        self.logicalState = 'Designated'
+        self.fwdingState = 'Listening'
+        self.V = vector(self)
+
+
+def spanning_tree(bridgeId, ports):
+    bvector = vector(bridgeId)
+    for port in ports:
+        port.V = bvector
+
 
 """
 Main function
@@ -122,3 +169,4 @@ BPDU - BPDU + localport#
     A==B if  A!<B and B!<A
 
 """
+
