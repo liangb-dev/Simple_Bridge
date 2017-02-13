@@ -43,7 +43,7 @@ def print_pkt(i, n1, n2, pkt):
     s = ('wire %d, %s -> %s' % (i, n1, n2))
     bytes = map(lambda x: '%02x' % ord(x), buffer(pkt)[:])
     for i in range(0,len(bytes),16):
-        s += ('\n' + ('%04x' % i) + string.join(bytes[i:i+16], ' '))
+        s += ('\n' + ('%04x' % i) + ' ' + string.join(bytes[i:i+16], ' '))
     print s
     
 # a single wire - accept connections on "wire.#", and forward packets between
