@@ -84,12 +84,7 @@ T = the switch that sent the last received BPDU
 p = port ID on sending switch
 age = age of message
 """
-class vector():
-    R = None
-    c = 0
-    T = None
-    p = 0
-    age = 0
+class Vector(object):
     def __init__(self, port):
         self.R = port;
         self.c = 0;
@@ -105,23 +100,54 @@ class vector():
         self.age = age
 
 
-class Port():
-    portNo = None
-    logicalState = None
-    fwdingState = None
-    V = None
+class Port(object):
 
     def __init__(self, portNo):
         self.portNo = portNo
         self.logicalState = 'Designated'
         self.fwdingState = 'Listening'
-        self.V = vector(self)
+        self.V = []
+        self.bridgeBPDU = Vector(self)
+
+    # return true if this port's bpdu is better than the other
+    def has_better_bpdu_than(self, b2) :
+        return ((self.bridgeBPDU.R < b2.R) or
+            ((self.bridgeBPDU.R==b2.R) and (self.bridgeBPDU.c<b2.c)) or
+            ((self.bridgeBPDU.R==b2.R) and (self.bridgeBPDU.c==b2.c) and (self.bridgeBPDU.T<b2.T)) or
+            ((self.bridgeBPDU.R==b2.R) and (self.bridgeBPDU.c==b2.c) and (self.bridgeBPDU.T==b2.T)
+             and (self.bridgeBPDU.p<b2.p)))
+
+    def update_vector(self, bpdu_received):
+        self.V[bpdu_received.p] = bpdu_received
+        if self.has_better_bpdu_than(bpdu_received):
+            self.bridgeBPDU == bpdu_received
 
 
-def spanning_tree(bridgeId, ports):
-    bvector = vector(bridgeId)
-    for port in ports:
-        port.V = bvector
+
+
+class Bridge(object):
+
+    def __init__(self, bridgeId, portNos):
+        self.bridgeId = bridgeId
+        self.ports = {}
+        self.bpdu = Vector(self)
+        self.bestBpdu = Vector(self)
+
+        for portNo in portNos:
+            self.ports.append(Port(portNo))
+
+    def broadcastBPDU(self):
+        for port in self.ports:
+            # port.socket.send(bpdu)
+            pass
+
+    def updateBPDU(self):
+        if self.bestBpdu.R != self.bpdu.R:
+            self.bpdu.R = self.bestBpdu.R
+        self.BPDU.cost = self.bestBPDU.cost + 1
+        self.broadcastBPDU()
+
+
 
 
 """
