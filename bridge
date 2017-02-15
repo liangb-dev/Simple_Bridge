@@ -99,27 +99,26 @@ class Vector(object):
         self.p = p
         self.age = age
 
-    # return true if this vector is better than the other
-    def is_better_than(self, b2) :
-        return ((self.R < b2.R) or
-            ((self.R==b2.R) and (self.c<b2.c)) or
-            ((self.R==b2.R) and (self.c==b2.c) and (self.T<b2.T)) or
-            ((self.R==b2.R) and (self.c==b2.c) and (self.T==b2.T)
-             and (self.p<b2.p)))
-
+"""
+The bridge itself
+"""
 class Bridge(object):
 
-    def __init__(self, bridge_id, port_nos):
-        self.bridge_id = bridge_id
-        self.my_bpdu = my_bpdu
-        self.ports = []
+    def __init__(self, bridge_id, ports):
+        self.my_mac = my_mac
+        self.my_bpdu = Vector(self)
+        self.ports = ports
         self.bpdus = []
         self.my_bpdu = Vector(self)
         self.best_bpdu = self.my_bpdu
         self.root_port = -1
+        self.forwarding_table = {}
 
-        for port_no in port_nos:
-            self.ports.append(Port(port_no))
+        for c in ports:
+            self.ports.append(
+
+        
+
 
     def receive_bpdu(self, bpdu, portNo):
         bpdu.c += 10
@@ -156,23 +155,34 @@ class Bridge(object):
     # send on port
     def send_on_port(self, Port): #Arg: Takes in a 'Port'
         if (check_port_status(Port)):
+            pass
             # TODO: Send self.bpdu on 'Port'
         else:
             pass
+            
 
     # send out self.bpdu    
     def broadcast_bpdu(self):
-        if (self.checkTable()): #Return True if Destination is in Forwarding Table
-            send_on_port(self.forwarding_table['dest'] #TODO: insert 'destination'
+        if (self.check_forwarding_table()): #Return True if Destination is in Forwarding Table
+            send_on_port(self.forwarding_table['dest']) #TODO: insert 'destination'
         else: #if Destination is not in Forwarding Table
             for c in self.ports: #TODO: ignore the receiving port?
                 send_on_port(c) 
                     
          
+    # return true if this vector is better than the other
+    def is_better_than(self, b1, b2) :
+        return ((b1.R < b2.R) or
+            ((b1.R==b2.R) and (b1.c<b2.c)) or
+            ((b1.R==b2.R) and (b1.c==b2.c) and (b1.T<b2.T)) or
+            ((b1.R==b2.R) and (b1.c==b2.c) and (b1.T==b2.T)
+             and (b1.p<b2.p)))
+
         
 
-
-
+"""
+A port
+"""
 class Port(object):
 
     def __init__(self, portNo):
@@ -190,50 +200,43 @@ class Port(object):
 
 
 
-
 """
 Main function
 """
 if __name__ == '__main__':
     parseargs()
+    
     myID = ether_aton(args.ID[0])
     ports = args.ports
-    wirenum = ports[0]
+    bridge = Bridge(myID, ports)
+    #wirenum = ports[0]
 
     remote = ether_aton("11:11:11:11:11:11")
 
-    print "Bridge ID: ",myID
-    print "Ports: ", ports
+    print "Bridge ID: ", ether_ntoa(myID)
+    print "Ports: ", bridge.ports
     print "Number of ports: ",len(ports)
 
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
-    s.bind('\0%s.host-%s (wire %d)' % (getpass.getuser(), ether_ntoa(myID), wirenum))    
-    if s.connect_ex('\0%s.wire.%d' % (getpass.getuser(), wirenum)):
-        print 'connection error'
-        sys.exit(1)
+    for wirenum in bridge.ports: #Do for every port 
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        s.bind('\0%s.host-%s (wire %d)' % (getpass.getuser(), ether_ntoa(bridge.my_mac), wirenum))    
+        if s.connect_ex('\0%s.wire.%d' % (getpass.getuser(), wirenum)):
+            print 'connection error'
+            sys.exit(1)
     
-    t = threading.Thread(target=receive, args=[s])
-    t.daemon = True     #so ^C works
-    t.start()
+        t = threading.Thread(target=receive, args=[s])
+        t.daemon = True     #so ^C works
+        t.start()
 
-    pkt_data = string.join(map(chr, (0xDE,0xAD,0xBE,0xEF,0xAD,0xBE,0xEF)), '')
-    bogus_ethertype = 0x900
-    pkt = struct.pack('!6s 6s H', remote, myID, bogus_ethertype) + pkt_data
-    if len(pkt) < 60:
-        pkt = pkt + '\0' * (60-len(pkt))
+        pkt_data = string.join(map(chr, (0xDE,0xAD,0xBE,0xEF,0xAD,0xBE,0xEF)), '')
+        bogus_ethertype = 0x900
+        pkt = struct.pack('!6s 6s H', remote, myID, bogus_ethertype) + pkt_data
+        if len(pkt) < 60:
+            pkt = pkt + '\0' * (60-len(pkt))
     
-    while True:
-        time.sleep(3)
-        if not args.silent:
-             s.send(pkt)
+        while True:
+            time.sleep(3)
+            if not args.silent:
+                s.send(pkt)
 
-
-
-"""
-BPDU - BPDU + localport#
-    A<B iff a.priority < b.priority (a,b are roots)
-         or
-    A==B if  A!<B and B!<A
-
-"""
 
