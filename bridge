@@ -111,6 +111,7 @@ class Bridge(object):
 
     def __init__(self, bridge_id, port_nos):
         self.bridge_id = bridge_id
+        self.my_bpdu = my_bpdu
         self.ports = []
         self.bpdus = []
         self.my_bpdu = Vector(self)
@@ -119,11 +120,6 @@ class Bridge(object):
 
         for port_no in port_nos:
             self.ports.append(Port(port_no))
-
-    #def broadcast_bpdu(self):
-    #    for port in self.ports:
-    #        # port.socket.send(bpdu)
-    #        pass
 
     def receive_bpdu(self, bpdu, portNo):
         bpdu.c += 10
@@ -141,6 +137,41 @@ class Bridge(object):
             self.logical_state = 'listening'
             # TODO: timer = 15
 
+    # update the status of all the 'Port' in 'self.ports'
+    def update_ports(self):
+        pass
+    
+    # update the forwarding table
+    def update_table(self):
+        pass
+    
+    # check to see if destination is in table
+    def check_forwarding_table(self):
+        return True
+    
+    # check the status of port 
+    def check_port_status(self, Port): #Arg: Takes in a 'Port'
+        return Port.logical_state != 'Blocked' #Return False if the port is 'blocked'
+
+    # send on port
+    def send_on_port(self, Port): #Arg: Takes in a 'Port'
+        if (check_port_status(Port)):
+            # TODO: Send self.bpdu on 'Port'
+        else:
+            pass
+
+    # send out self.bpdu    
+    def broadcast_bpdu(self):
+        if (self.checkTable()): #Return True if Destination is in Forwarding Table
+            send_on_port(self.forwarding_table['dest'] #TODO: insert 'destination'
+        else: #if Destination is not in Forwarding Table
+            for c in self.ports: #TODO: ignore the receiving port?
+                send_on_port(c) 
+                    
+         
+        
+
+
 
 class Port(object):
 
@@ -149,6 +180,12 @@ class Port(object):
         self.port_no = portNo
         self.logical_state = 'Designated'
         self.fwding_state = 'Listening'
+
+    def outbound_delivery(self):
+        pass
+
+    def inbound_delivery(self):
+        pass
 
 
 
