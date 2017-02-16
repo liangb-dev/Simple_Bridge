@@ -7,6 +7,8 @@ import string
 import getpass
 import argparse
 import struct
+import PART1.bpdu
+
 
 """
 Program: Bridge 
@@ -151,14 +153,14 @@ class Bridge(object):
                     else:
                         self.broadcast_bpdu(dst_mac, recv_port) #broadcast to all ports
 
-
     #When you receive a new BPDU
     def newbpdu_updates(self, bpdu):
         recv_port #TODO: extract source port
         #update per-port vector
         self.update_vector(bpdu, recv_port)
         #update port states
-        self.update_port(bpdu, recv_port) 
+        self.update_port(bpdu, recv_port)
+
     #Update per-port vector
     def update_vector(self, bpdu, portNo):
         vector = self.port_nums[portNo]
@@ -169,6 +171,7 @@ class Bridge(object):
         #   if vector is better than bpdu
         if (self.compare_bpdu(bpdu, vector)): 
             my_bpdu = vector
+
     #Update port states
     def update_port(self, vector): 
         #b) received port becomes root port
@@ -259,6 +262,8 @@ if __name__ == '__main__':
     bridge = Bridge(myID, ports)
     
     remote = ether_aton("11:11:11:11:11:11")
+
+
 
     print "Bridge ID: ", ether_ntoa(myID)
     print "Ports: ", bridge.port_nums
