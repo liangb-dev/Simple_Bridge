@@ -137,20 +137,20 @@ class Bridge(object):
 
     #When you receive an ethernet packet on port 'portnum'
     def receive_packet():
-        #if (portnum is not "Learning" nor "Forwarding"):
+        if (port_logical[index] == "Blocking"):
             #Drop it
-        #Else:
-            #extract source MAC Address
-            #fwrd_table[portnum] = [src_mac, timer=0]
-            #if (portnum is in "Forwading"):
-                #extract the destination MAC address
-                #if (dst_mac == 01:80:c2:00:00:00):
+        else:
+            src_mac#extract source MAC Address: src_mac
+            self.update_table(srs_mac, portnum)
+            if (self.get_fwrd(portnum) == "Forwading"):
+                dst_mac#extract the destination MAC address: dst_mac
+                if (dst_mac == "01:80:c2:00:00:00"):
                     #drop it
-                #else:
-                    #if (check_table(dst_mac, portnum) and portnum is in "Forwarding"):
+                else:
+                    if (check_table(dst_mac, portnum) and self.get_fwrd(portnum) == "Forwarding"):
                         #Foward to corresponding portnum
-                    #else:
-                        #broadcast to all ports that arent portnum and that are in "Forwarding"
+                    else:
+                        self.broadcast_bpdu() #broadcast to all ports
 
 
     #When you receive a new BPDU
@@ -234,9 +234,9 @@ class Bridge(object):
             
 
     # send out self.bpdu    
-    def broadcast_bpdu(self):
-        if (self.check_fwrd_table()): #Return True if Destination is in Forwarding Table
-            send_on_port(self.fwrd_table['dest']) #TODO: insert 'destination'
+    def broadcast_bpdu(self, dst_mac):
+        if (self.check_fwrd_table(dst_mac)): #Return True if Destination is in Forwarding Table
+            send_on_port(self.fwrd_table[dst_mac]) 
         else: #if Destination is not in Forwarding Table
             for c in self.ports: #TODO: ignore the receiving port?
                 send_on_port(c) 
