@@ -7,7 +7,6 @@ import string
 import getpass
 import argparse
 import struct
-import PART1.bpdu
 
 
 """
@@ -67,7 +66,7 @@ def ether_ntoa(n):
 """
 Not sure what this does yet!!
 """
-def receive(s):
+def receive(s, bridge):
     while True:
         dgram = s.recv(1500)
         if not dgram:
@@ -75,8 +74,18 @@ def receive(s):
             sys.exit(1)
         dst,src = struct.unpack('6s 6s', dgram[0:12])
         print 'received dgram from %s to %s:' % (ether_ntoa(src), ether_ntoa(dst))
-        print string.join(map(lambda x: '%02x' % ord(x), buffer(dgram)[:]), ' ')
+        
+        result = string.join(map(lambda x: '%02x' % ord(x), buffer(dgram)[:]), ' ').split()
+        print result[15:24]
+        data1 = int(result[15])
+        data2 = result[16]
+        data3 = result[17]
+        data9 = result[22]
+        data10 = result[23]
+        bridge.V.append(Vector(0))
+        bridge.V[data1].x_c(99)
         print ''
+        print bridge.V[data1].v_print()
 
 """
 vector V[p] = <R,c,T,p,age> where:
@@ -101,13 +110,28 @@ class Vector(object):
         self.p = p
         self.age = age
 
+    def v_print(self):
+        vector = [self.R, self.c, self.T, self.p, self.age]
+        print vector
+    
+    def x_R(self, R):
+        self.R = R
+    def x_c(self, c):
+        self.c = c
+    def x_T(self, T):
+        self.T = T
+    def x_p(self, p):
+        self.p = p
+    def x_age(self,age):
+        self.age = age 
+
 """
 The bridge itself
 """
 class Bridge(object):
     def __init__(self, my_mac, ports):
         self.my_mac = my_mac #Constant
-        self.my_bpdu = Vector(self) #Constant
+        self.my_bpdu = Vector(None) #Constant
         
         self.port_nums = []
         self.port_logical = []
@@ -248,12 +272,6 @@ class Bridge(object):
 """
 
 
-
-"""
-Main function
-ddd
-"""
-
 if __name__ == '__main__':
     parseargs()
     
@@ -261,7 +279,7 @@ if __name__ == '__main__':
     ports = args.ports
     bridge = Bridge(myID, ports)
     
-    remote = ether_aton("11:11:11:11:11:11")
+    dst = ether_aton("99:99:99:99:99:99")
 
 
 
@@ -276,13 +294,13 @@ if __name__ == '__main__':
             print 'connection error'
             sys.exit(1)
     
-        t = threading.Thread(target=receive, args=[s])
+        t = threading.Thread(target=receive, args=[s, bridge])
         t.daemon = True     #so ^C works
         t.start()
 
-        pkt_data = string.join(map(chr, (0xDE,0xAD,0xBE,0xEF,0xAD,0xBE,0xEF)), '')
+        pkt_data = string.join(map(chr, (wirenum,1,2,3,4,5,6,7,8,9)), '')
         bogus_ethertype = 0x900
-        pkt = struct.pack('!6s 6s H', remote, myID, bogus_ethertype) + pkt_data
+        pkt = struct.pack('!6s 6s H', dst, myID, bogus_ethertype) + pkt_data
         if len(pkt) < 60:
             pkt = pkt + '\0' * (60-len(pkt))
     
