@@ -86,11 +86,11 @@ age = age of message
 """
 class Vector(object):
     def __init__(self, port):
-        self.R = port;
-        self.c = 0;
-        self.T = port;
-        self.p = 0;
-        self.age = 0;
+        self.R = port; # root port identifier from last received BPDU
+        self.c = 0; # root cost from last BPDU
+        self.T = port; # the switch that sent the last received BPDU
+        self.p = 0; # port ID on sending switch
+        self.age = 0; # age of message
 
     def __init__(self, R=None, c=0, T=None, p=0, age=0):
         self.R = R
