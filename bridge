@@ -105,18 +105,24 @@ The bridge itself
 class Bridge(object):
 
     def __init__(self, bridge_id, ports):
-        self.my_mac = my_mac
-        self.my_bpdu = Vector(self)
-        self.ports = ports
+        self.my_mac = my_mac #Constant
+        self.my_bpdu = Vector(self) #Constant
+        self.port_nums = []
+        self.port_logical = []
+        self.port_fwrd = []
         self.bpdus = []
-        self.my_bpdu = Vector(self)
         self.best_bpdu = self.my_bpdu
         self.root_port = -1
-        self.forwarding_table = {}
+        self.fwrd_table = {}
 
+        #Initialize all ports
         for c in ports:
-            self.ports.append(
-
+            self.port_nums.append(c) #Append port nums
+            self.port_logical.append("Designated") #Append port logical states - default
+            self.port_fwrd.append("Listening") #Append port forwarding states - default
+        #Initialize forwarding table
+        for c in ports:
+            fwrd_table[c] = ""
         
 
 
@@ -141,20 +147,25 @@ class Bridge(object):
         pass
     
     # update the forwarding table
-    def update_table(self):
-        pass
+    def update_table(self, portnum, mac):
+        self.fwrd_table.update({portnum:mac})
     
     # check to see if destination is in table
-    def check_forwarding_table(self):
-        return True
-    
-    # check the status of port 
-    def check_port_status(self, Port): #Arg: Takes in a 'Port'
-        return Port.logical_state != 'Blocked' #Return False if the port is 'blocked'
+    def check_fwrd_table(self, mac):
+        return mac in self.fwrd_table.values() 
+
+    # get port logical status
+    def get_logical(self, portnum):
+        index = port_nums.index(portnum)
+        return port_logical[index]
+    # get port forwarding status
+    def get_fwrd(self, portnum):
+        index = port_nums.index(portnum)
+        return port_fwrd[index]
 
     # send on port
-    def send_on_port(self, Port): #Arg: Takes in a 'Port'
-        if (check_port_status(Port)):
+    def send_on_port(self, portnum): #Arg: Takes in a 'Port'
+        if (get_logical(portnum) != "Blocked"):
             pass
             # TODO: Send self.bpdu on 'Port'
         else:
@@ -163,8 +174,8 @@ class Bridge(object):
 
     # send out self.bpdu    
     def broadcast_bpdu(self):
-        if (self.check_forwarding_table()): #Return True if Destination is in Forwarding Table
-            send_on_port(self.forwarding_table['dest']) #TODO: insert 'destination'
+        if (self.check_fwrd_table()): #Return True if Destination is in Forwarding Table
+            send_on_port(self.fwrd_table['dest']) #TODO: insert 'destination'
         else: #if Destination is not in Forwarding Table
             for c in self.ports: #TODO: ignore the receiving port?
                 send_on_port(c) 
@@ -178,26 +189,6 @@ class Bridge(object):
             ((b1.R==b2.R) and (b1.c==b2.c) and (b1.T==b2.T)
              and (b1.p<b2.p)))
 
-        
-
-"""
-A port
-"""
-class Port(object):
-
-    def __init__(self, portNo):
-        self.my_bpdu = Vector(self)
-        self.port_no = portNo
-        self.logical_state = 'Designated'
-        self.fwding_state = 'Listening'
-
-    def outbound_delivery(self):
-        pass
-
-    def inbound_delivery(self):
-        pass
-
-
 
 
 """
@@ -209,8 +200,7 @@ if __name__ == '__main__':
     myID = ether_aton(args.ID[0])
     ports = args.ports
     bridge = Bridge(myID, ports)
-    #wirenum = ports[0]
-
+    
     remote = ether_aton("11:11:11:11:11:11")
 
     print "Bridge ID: ", ether_ntoa(myID)
