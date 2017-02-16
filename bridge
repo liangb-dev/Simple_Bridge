@@ -103,8 +103,7 @@ class Vector(object):
 The bridge itself
 """
 class Bridge(object):
-
-    def __init__(self, bridge_id, ports):
+    def __init__(self, my_mac, ports):
         self.my_mac = my_mac #Constant
         self.my_bpdu = Vector(self) #Constant
         
@@ -127,59 +126,56 @@ class Bridge(object):
 
         #Initialize forwarding table
         for c in ports:
-            fwrd_table[c] = ["", 0] #[MAC,timer]
+            self.fwrd_table[c] = ["", 0] #[MAC,timer]
         #TODO: remove entry from the table if >15s
 
         #Initialize the vectors
         for c in ports:
-            V.append(my_bpdu))
+            self.V.append(self.my_bpdu)
         
 
     #When you receive an ethernet packet on port 'portnum'
-    def receive_packet():
-        if (port_logical[index] == "Blocking"):
-            #Drop it
+    def receive_packet(self, portnum):
+        if (self.get_fwrd(portnum) == "Blocking"):
+            pass #Drop it
         else:
             src_mac#extract source MAC Address: src_mac
             self.update_table(srs_mac, portnum)
-            if (self.get_fwrd(portnum) == "Forwading"):
+            if (self.get_fwrd(portnum) == "Forwarding"):
                 dst_mac#extract the destination MAC address: dst_mac
                 if (dst_mac == "01:80:c2:00:00:00"):
-                    #drop it
+                    pass #drop it
                 else:
                     if (check_table(dst_mac, portnum) and self.get_fwrd(portnum) == "Forwarding"):
-                        #Foward to corresponding portnum
+                        self.send_on_port(portnum) #Foward to corresponding portnum
                     else:
-                        self.broadcast_bpdu() #broadcast to all ports
+                        self.broadcast_bpdu(dst_mac) #broadcast to all ports
 
 
     #When you receive a new BPDU
     def newbpdu_updates(self, bpdu):
+        recv_port #TODO: extract source port
         #update per-port vector
-        self.handle_vector(bpdu, recv_port) #TODO: Pass it a real recv_port
+        self.update_vector(bpdu, recv_port)
         #update port states
-        handle_vector(bpdu, recv_port) 
-        
-
+        self.update_port(bpdu, recv_port) 
     #Update per-port vector
-    def handle_vector(self, bpdu, portNo):
+    def update_vector(self, bpdu, portNo):
         vector = self.port_nums[portNo]
         vector.c += 10
         vector.a += 1
-        
+
         #a) compare my_bpdu to received vector
         #   if vector is better than bpdu
         if (self.compare_bpdu(bpdu, vector)): 
             my_bpdu = vector
-        
-
     #Update port states
     def update_port(self, vector): 
         #b) received port becomes root port
         self.root_port = vector.R
         #c) all ports j where V[j] is worse than bridge BPDU become Designated
         for index in len(ports):
-            if (self.compare_bpdu(bpdu, v):
+            if (self.compare_bpdu(bpdu, v)):
                 self.port_logical[index] = "Designated"
                 self.port_fwrd[index] = "Listening"
                 #TODO: Set timer to 15s for this port
@@ -190,7 +186,50 @@ class Bridge(object):
 #TODO: When a port timer fires in Listening state you set it to 15s and change to Learning state
 #TODO: When a port timer fires in Learning state you set it to 0s and change to Forwarding state
 
+   
+    # update the forwarding table
+    def update_table(self, portnum, mac):
+        self.fwrd_table.update({portnum:mac})
+    
+    # check to see if destination is in table
+    def check_table(self, mac):
+        return mac in self.fwrd_table.values() 
 
+    #Get port logical status
+    def get_logical(self, portnum):
+        index = port_nums.index(portnum)
+        return port_logical[index]
+    #Get port forwarding status
+    def get_fwrd(self, portnum):
+        index = port_nums.index(portnum)
+        return port_fwrd[index]
+
+    #Send on specific port
+    def send_on_port(self, portnum): #Arg: Takes in a 'Port'
+        if (get_fwrd(portnum) == "Forwarding"):
+            pass # TODO: Send self.bpdu on 'Port'
+        else:
+            pass
+            
+
+    #Broadcast self.bpdu    
+    def broadcast_bpdu(self, dst_mac):
+        if (self.check_table(dst_mac)): #Return True if Destination is in Forwarding Table
+            send_on_port(self.fwrd_table[dst_mac]) 
+        else: #if Destination is not in Forwarding Table
+            for c in self.ports: #TODO: ignore the receiving port?
+                send_on_port(c) 
+                    
+         
+    # return true if b1 is better than b2
+    def compare_bpdu(self, b1, b2) :
+        return ((b1.R < b2.R) or
+            ((b1.R==b2.R) and (b1.c<b2.c)) or
+            ((b1.R==b2.R) and (b1.c==b2.c) and (b1.T<b2.T)) or
+            ((b1.R==b2.R) and (b1.c==b2.c) and (b1.T==b2.T)
+             and (b1.p<b2.p)))
+
+"""
     def spanning_tree(self):
         bv = self.best_v()
         if bv == self.bridge_bpdu:
@@ -202,55 +241,7 @@ class Bridge(object):
             self.root_port = -1
             self.logical_state = 'listening'
             # TODO: timer = 15
-
-    # update the status of all the 'Port' in 'self.ports'
-    def update_ports(self):
-        pass
-    
-    # update the forwarding table
-    def update_table(self, portnum, mac):
-        self.fwrd_table.update({portnum:mac})
-    
-    # check to see if destination is in table
-    def check_fwrd_table(self, mac):
-        return mac in self.fwrd_table.values() 
-
-    # get port logical status
-    def get_logical(self, portnum):
-        index = port_nums.index(portnum)
-        return port_logical[index]
-    # get port forwarding status
-    def get_fwrd(self, portnum):
-        index = port_nums.index(portnum)
-        return port_fwrd[index]
-
-    # send on port
-    def send_on_port(self, portnum): #Arg: Takes in a 'Port'
-        if (get_logical(portnum) != "Blocked"):
-            pass
-            # TODO: Send self.bpdu on 'Port'
-        else:
-            pass
-            
-
-    # send out self.bpdu    
-    def broadcast_bpdu(self, dst_mac):
-        if (self.check_fwrd_table(dst_mac)): #Return True if Destination is in Forwarding Table
-            send_on_port(self.fwrd_table[dst_mac]) 
-        else: #if Destination is not in Forwarding Table
-            for c in self.ports: #TODO: ignore the receiving port?
-                send_on_port(c) 
-                    
-         
-    # return true if this vector is better than the other
-    def compare_bpdu(self, b1, b2) :
-        return ((b1.R < b2.R) or
-            ((b1.R==b2.R) and (b1.c<b2.c)) or
-            ((b1.R==b2.R) and (b1.c==b2.c) and (b1.T<b2.T)) or
-            ((b1.R==b2.R) and (b1.c==b2.c) and (b1.T==b2.T)
-             and (b1.p<b2.p)))
-
-
+"""
 
 """
 Main function
@@ -265,10 +256,10 @@ if __name__ == '__main__':
     remote = ether_aton("11:11:11:11:11:11")
 
     print "Bridge ID: ", ether_ntoa(myID)
-    print "Ports: ", bridge.ports
+    print "Ports: ", bridge.port_nums
     print "Number of ports: ",len(ports)
 
-    for wirenum in bridge.ports: #Do for every port 
+    for wirenum in bridge.port_nums: #Do for every port 
         s = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
         s.bind('\0%s.host-%s (wire %d)' % (getpass.getuser(), ether_ntoa(bridge.my_mac), wirenum))    
         if s.connect_ex('\0%s.wire.%d' % (getpass.getuser(), wirenum)):
