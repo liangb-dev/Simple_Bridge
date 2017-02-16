@@ -77,15 +77,16 @@ def receive(s, bridge):
         
         result = string.join(map(lambda x: '%02x' % ord(x), buffer(dgram)[:]), ' ').split()
         print result[15:24]
-        data1 = int(result[15])
-        data2 = result[16]
-        data3 = result[17]
-        data9 = result[22]
-        data10 = result[23]
-        bridge.V.append(Vector(0))
-        bridge.V[data1].x_c(99)
+        v = Vector(0)
+        v.R = result[15]
+        v.c = result[16]
+        v.T = result[17]
+        v.p = result[18]
+        v.age = result[19]
+
+        bridge.V.append(v)
         print ''
-        print bridge.V[data1].v_print()
+        print bridge.V[v.R].v_print()
 
 """
 vector V[p] = <R,c,T,p,age> where:
@@ -116,12 +117,16 @@ class Vector(object):
     
     def x_R(self, R):
         self.R = R
+
     def x_c(self, c):
         self.c = c
+
     def x_T(self, T):
         self.T = T
+
     def x_p(self, p):
         self.p = p
+
     def x_age(self,age):
         self.age = age 
 
