@@ -113,12 +113,23 @@ def receive(s, bridge):
             sys.exit(1)
         
         
-        new_package(bridge, dgram) #update bridge with info from new vector 
+        bpdu = new_package(bridge, dgram) 
+                                #update bridge with info from new vector 
         
-        spanning_tree(bridge) #implement spanning tree after bridge got updated
+        rcv_port = bpdu.p
+        src = bpdu.T
+        dst = bpdu.D        
+
+
+        spt_value_update(bridge) #update values according to spanning tree protocol
+
+        bridge.receive_packet(bpdu, s) 
+                                #update fwrd table, drop/forward/broadcast
+                                
 """
 method: new_package()
 Extract information from the dgram and update bridge.V[] with a new vector
+Returns: receiving port
 """
 def new_package(bridge, dgram):
     dst, src, root_mac = struct.unpack('6s 6s 6s', dgram[0:18])
@@ -128,6 +139,7 @@ def new_package(bridge, dgram):
         (lambda x: '%02x' % ord(x), buffer(dgram)[:]), ' ').split()
 
     v = Vector(None, None, None, None, None)
+    v.D = ether_ntoa(dst)
     v.B = ether_ntoa(root_mac)
     v.R = htod(string.join(result[18:20],''))
     v.c = htod(string.join(result[20:22],''))
@@ -136,10 +148,11 @@ def new_package(bridge, dgram):
     v.age = 0
 
     bridge.V[bridge.get_index(v.p)] = v    #Update vector in bridge.V[port]
-
+    
+    return v
 
 """
-method: spanning_tree()
+method: spt_value_update()
 When you receive BPDU on port i, you first update per-port vector\
 V[i] = <B,R,c,T,p,age.
 If V[i] is better than current bridge BPDU:
@@ -153,7 +166,7 @@ When you change a port to 'Blocked' you set the timer to 0s.
 When a port fires in 'Listening' state you set it to 15s and change to 'Learning'.
 When a port fires in 'Learning' state you set it to 0s and change to 'Forwarding'. 
 """
-def spanning_tree(bridge):
+def spt_value_update(bridge):
     for v in bridge.V:
         port_index = bridge.get_index(v.p) #ports[port_index] = port_num
         if (compare_bpdu(v, bridge.best_bpdu)):
@@ -185,7 +198,8 @@ def spanning_tree(bridge):
 Vector Class
 """
 class Vector(object):
-    def __init__(self, B, R, c, T, p, age=0):
+    def __init__(self, B, R, c, T, p, age=0, D=""):
+        self.D = D # Destination mac address
         self.B = B # root bridge mac address
         self.R = R; # root port identifier from last received BPDU
         self.c = c; # root cost from last BPDU
@@ -195,7 +209,7 @@ class Vector(object):
 
     #print out the vector values in order in array
     def v_print(self):
-        vector = [self.B, self.R, self.c, self.T, self.p, self.age]
+        vector = [self.D, self.B, self.R, self.c, self.T, self.p, self.age]
         print vector
 
     
@@ -237,60 +251,82 @@ class Bridge(object):
         
         
 
-    #When you receive an ethernet packet on port 'portnum'
-    def receive_packet(self, recv_port):
-        if (self.get_fwrd(recv_port) == "Blocking"):
-            pass #Drop it
+    """
+    method: receive_packet(rcv_port, src_mac, dst_mac)
+    Update forwarding table and decide whether to drop/forward/broadcast packet
+    """
+    def receive_packet(self, bpdu, s):
+        recv_port = bpdu.p
+        src_mac = bpdu.T
+        dst_mac = bpdu.D
+        if (self.get_fwrd(recv_port) != 'Learning'
+            or self.get_fwrd(recv_port) != 'Forwarding'):
+            pass #TODO:DROP IT
         else:
-            src_mac#extract source MAC Address: src_mac
-            self.update_table(src_mac,src_port)
+            self.update_table(src_mac,rcv_port)    #update forwarding table
             if (self.get_fwrd(rcv_port) == "Forwarding"):
-                dst_mac#extract the destination MAC address: dst_mac
                 if (dst_mac == "01:80:c2:00:00:00"):
-                    pass #drop it
+                    pass #TODO: DROP IT
                 else:
-                    if (check_table(dst_mac, recv_port) and self.get_fwrd(recv_port) == "Forwarding"):
-                        self.send_on_port(recv_port) #Foward to corresponding portnum
+                    #inherently checks if 'mac' in forwarding table thru 'mtop(dst)'
+                    if (self.get_fwrd(self.mtop(dst_mac)) == "Forwarding"):
+                        self.send_on_port(self.mtop(dst_mac), bpdu, s) 
+                                                #Foward to corresponding portnum
                     else:
-                        self.broadcast_bpdu(dst_mac, recv_port) #broadcast to all ports
+                        self.broadcast_bpdu(dst_mac, rcv_port, bpdu, s)
+                                                 #broadcast to all ports
 
 
-   
-    # update the forwarding table
-    def update_table(self, portnum, mac):
-        self.fwrd_table.update({portnum:mac})
-    
-    # check to see if destination is in table
-    def check_table(self, mac):
-        return mac in self.fwrd_table.values() 
-
-    #Get port index
-    def get_index(self, portnum):
-        return self.port_nums.index(portnum)
-    #Get port logical status
-    def get_logical(self, portnum):
-        return self.port_logical[self.get_index(portnum)]
-    #Get port forwarding status
-    def get_fwrd(self, portnum):
-        return self.port_fwrd[self.get_index(portnum)]
-
-    #Send on specific port
-    def send_on_port(self, portnum): #Arg: Takes in a 'Port'
-        if (get_fwrd(portnum) == "Forwarding"):
-            pass # TODO: Send self.bpdu on 'Port'
+    """ Send given bpdu on specific port """
+    def send_on_port(self, portnum, bpdu, s): 
+        if (self.get_fwrd(portnum) == "Forwarding"):
+                
+            pkt = struct.pack('!6s 6s 6s H H H',\
+                                 bpdu.D, bpdu.T, bpdu.B, bpdu.R, bpdu.c, bpdu.p)
+            if len(pkt) < 60:
+                pkt = pkt + '\0' * (60-len(pkt))
+            
+            s.send(pkt)
         else:
             pass
             
 
-    #Broadcast self.bpdu    
-    def broadcast_bpdu(self, dst_mac, rcv_port):
-        if (self.check_table(dst_mac)): #Return True if Destination is in Forwarding Table
-            send_on_port(self.fwrd_table[dst_mac]) 
-        else: #if Destination is not in Forwarding Table
-            for c in self.ports: #TODO: ignore the receiving port?
+    """Broadcast given bpdu"""    
+    def broadcast_bpdu(self, dst_mac, rcv_port, bpdu, s):
+        for c in self.port_nums: 
                 if (c != rcv_port):
-                    self.send_on_port(c) 
+                    self.send_on_port(c, bpdu, s) 
+
+
                     
+    """ update the forwarding table """
+    def update_table(self, portnum, mac):
+        self.fwrd_table.update({portnum:[mac, 15]}) 
+
+    """ check to see if destination is in forwarding table """
+    def check_table(self, mac):
+        for arr in self.fwrd_table.values():
+            if (arr[0] == mac):
+                return True
+        return False
+
+ 
+    """ Get port given mac
+        BUT returns 'None' if mac can't be found """
+    def mtop(self, mac):
+        return next((k for k, v in self.fwrd_table.items() if v[0] == mac), None)
+
+    """ Get port index """
+    def get_index(self, portnum):
+        return self.port_nums.index(portnum)
+    """ Get port logical status """
+    def get_logical(self, portnum):
+        return self.port_logical[self.get_index(portnum)]
+    """ Get port forwarding status """
+    def get_fwrd(self, portnum):
+        if (portnum == None):
+            return False
+        return self.port_fwrd[self.get_index(portnum)]
 
 
 if __name__ == '__main__':
@@ -308,9 +344,9 @@ if __name__ == '__main__':
 
     for wirenum in bridge.port_nums: #Do for every port 
         
-        B = ether_aton("55:55:55:55:55:55")#bridge.best_bpdu.B #ether_aton(root mac)
-        R = dtoh(bridge.best_bpdu.R) #root port in hex - bridge.best_bpdu.R
-        c = dtoh(bridge.best_bpdu.c) #root cost in hex - bridge.best_bpdu.c
+        B = bridge.best_bpdu.B #root mac address
+        R = dtoh(bridge.best_bpdu.R) #root port in hex
+        c = dtoh(bridge.best_bpdu.c) #root cost in hex
         T = bridge.my_mac #source mac
         p = dtoh(wirenum) #port number in hex - wirenum
 
@@ -324,14 +360,13 @@ if __name__ == '__main__':
         t = threading.Thread(target=receive, args=[s, bridge])
         t.daemon = True     #so ^C works
         t.start()
-
-        #pkt_data = string.join(map(chr, (0x98,0x76,0x21)), '')
         
+    
         pkt = struct.pack('!6s 6s 6s H H H', dst, T, B, R, c, p)
         if len(pkt) < 60:
             pkt = pkt + '\0' * (60-len(pkt))
-    
-        while True:
+        
+        while True: #TODO: I forgot what conclusion was but we discussed this one
             time.sleep(3)
             if not args.silent:
                 s.send(pkt)
