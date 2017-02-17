@@ -235,8 +235,10 @@ calls methods to decrement age values
 meant to be run in a thread once per second
 """
 def timer(bridge):
-    age_bpdus(bridge)
-    age_fwrd(bridge)
+    while True:
+        time.sleep(1)
+        age_bpdus(bridge)
+        age_fwrd(bridge)
     pass
 
 """
@@ -247,6 +249,7 @@ def age_bpdus(bridge):
     for v in bridge.V:
         if v.age == 0:
             bridge.V[bridge.V.index(v)] = bridge.my_bpdu  # Vector has timed out, reset to default
+            spt_value_update(bridge)
         elif v.age != -1:
             v.age -= 1
 
@@ -397,6 +400,10 @@ if __name__ == '__main__':
         t = threading.Thread(target=receive, args=[s, bridge])
         t.daemon = True     #so ^C works
         t.start()
+
+        clock = threading.Thread(target=timer, args=[bridge])
+        clock.daemon = True
+        clock.start()
     
         pkt = struct.pack('!6s 6s 6s H H H', dst, T, B, R, c, p)
         if len(pkt) < 60:
