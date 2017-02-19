@@ -20,7 +20,7 @@ Description: Receives and sends BPDU messages across wires. Keep a table record 
 ===================================================================================
 """
 
-
+global time
 
 """
 method: parseargs
@@ -80,6 +80,8 @@ def htod(n):
     return int("0x" + str(n),0)
 
 
+
+
  
 """
 method: compare_bpdu(b1, b2)
@@ -105,6 +107,7 @@ def best_of_bpdus(bpdus) :
     for bpdu in bpdus[1:]:
         if compare_bpdu(bpdu, best):
             best = bpdu
+    return best
 
 """
 Method: receive(s, bridge)
@@ -128,7 +131,7 @@ def receive(s, bridge):
         src = bpdu.T
         dst = bpdu.D
 
-        spt_value_update(bridge, bpdu) #update values according to spanning tree protocol
+        spt_value_update(bridge) #update values according to spanning tree protocol
 
         bridge.receive_packet(bpdu, s) 
                                 #update fwrd table, drop/forward/broadcast
@@ -247,7 +250,7 @@ decrements the timer on each bpdu stored in bridge
 """
 def age_bpdus(bridge):
     for v in bridge.V:
-        if v.age == 0:
+        if v.age == -1:
             bridge.V[bridge.V.index(v)] = bridge.my_bpdu  # Vector has timed out, reset to default
             spt_value_update(bridge)
         elif v.age != -1:
@@ -258,8 +261,24 @@ method: age_fwrd(bridge)
 decrements the timer on each member of the forwarding table in the given bridge
 """
 def age_fwrd(bridge):
-    # TODO: implement this
-    pass
+    for port in bridge.fwrd_table:
+        if bridge.fwrd_table[port][1] == 0:
+            bridge.fwrd_table[port] = [bridge.V[bridge.get_index(port)], 15]
+        elif bridge.fwrd_table[port][1] != -1:
+            bridge.fwrd_table[port][1] -= 1
+    
+"""
+method: age_timers(bridge):
+"""
+def age_timers(bridge):
+    for i in range(bridge.time):
+        if bridge.time[i] == -1:
+            if bridge.port_fwrd[i] == 'Listening':
+                bridge.port_fwrd[i] = 'Learning'
+                bridge.time[i] = 15
+            if bridge.port_fwrd[i] == 'Learning':
+                bridge.port_fwrd[i] = 'Forwarding'
+                bridge.time[i] = 0
 
 
 """
@@ -325,7 +344,9 @@ class Bridge(object):
     """ Send given bpdu on specific port """
     def send_on_port(self, portnum, bpdu, s): 
         if (self.get_fwrd(portnum) == "Forwarding"):
-                
+            
+            bpdu.p = portnum
+
             pkt = struct.pack('!6s 6s 6s H H H',\
                                  bpdu.D, bpdu.T, bpdu.B, bpdu.R, bpdu.c, bpdu.p)
             if len(pkt) < 60:
@@ -377,7 +398,7 @@ if __name__ == '__main__':
     ports = args.ports
     bridge = Bridge(myID, ports)
     
-    dst = ether_aton("99:99:99:99:99:99")
+    dst = ether_aton("01:80:c2:00:00:00")
 
     print "Bridge ID: ", ether_ntoa(myID)
     print "Ports: ", bridge.port_nums
